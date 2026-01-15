@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>KOSYMBIOSIS | Global Dynamic Map</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #7d3ec0;
+            --accent: #00d4ff;
+            --white: #ffffff;
+            --bg-light: #f4f9ff;
+            --glass: rgba(255, 255, 255, 0.85);
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-light);
+            color: #2c3e50;
+            overflow: hidden;
+        }
+
+        /* Mappa a tutto schermo */
+        #map { height: 100vh; width: 100vw; z-index: 1; }
+
+        /* Header flottante */
+        .nexus-header {
+            position: absolute; top: 15px; left: 15px; right: 15px;
+            z-index: 1000; pointer-events: none;
+        }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 15px 20px;
+            border: 1px solid rgba(255,255,255,0.5);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            pointer-events: auto;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        /* Pannello Mobile Inferiore (Drawer) */
+        .control-drawer {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            z-index: 1001; background: var(--glass);
+            backdrop-filter: blur(25px);
+            border-radius: 30px 30px 0 0;
+            padding: 25px;
+            max-height: 60vh; overflow-y: auto;
+            box-shadow: 0 -15px 40px rgba(0,0,0,0.08);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Elementi UI */
+        .api-pulse {
+            display: inline-block; width: 8px; height: 8px;
+            background: #2ecc71; border-radius: 50%;
+            margin-right: 8px; box-shadow: 0 0 10px #2ecc71;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        input, textarea {
+            width: 100%; border: 1px solid #e1e9f1;
+            padding: 15px; border-radius: 15px;
+            margin-bottom: 12px; box-sizing: border-box;
+            background: rgba(255,255,255,0.5); font-size: 16px;
+        }
+
+        .btn-action {
+            width: 100%; background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white; border: none; padding: 18px; border-radius: 15px;
+            font-weight: 600; font-size: 1.1rem; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(125, 62, 192, 0.3);
+        }
+
+        .metric-row {
+            display: flex; gap: 10px; margin-bottom: 20px;
+        }
+
+        .metric-pill {
+            background: white; padding: 10px 15px; border-radius: 12px;
+            font-size: 0.8rem; font-weight: 600; flex: 1;
+            border: 1px solid #edf2f7; text-align: center;
+        }
+
+        .node-list-item {
+            background: rgba(255,255,255,0.6); padding: 15px;
+            border-radius: 15px; margin-top: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+            border: 1px solid #f0f4f8;
+        }
+
+        .delete-btn { color: #ff5e57; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="nexus-header">
+    <div class="glass-card">
+        <div>
+            <div style="font-size: 0.6rem; letter-spacing: 3px; font-weight: 600; color: var(--primary);">NEXUS PEACE PLATFORM</div>
+            <div style="font-size: 1.1rem; font-weight: 600;">Galileo Sync: <span id="sync-time" style="color: var(--accent);">00:00:00</span></div>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 0.7rem; opacity: 0.6;">S-ROI STATUS</div>
+            <div style="font-weight: 600;"><span class="api-pulse"></span>0.5187</div>
+        </div>
+    </div>
+</div>
+
+<div id="map"></div>
+
+<div class="control-drawer">
+    <div class="metric-row">
+        <div class="metric-pill">GPS DRIFT: <span id="drift-val">18.043</span>s</div>
+        <div class="metric-pill">WALLET: <span id="wallet-val">...8719</span></div>
+    </div>
+
+    <h2 style="margin-top: 0; font-size: 1.3rem;">Editor di Pace Dinamico</h2>
+    <input type="text" id="nodeTitle" placeholder="Titolo Evento (es. Groenlandia Safe-Zone)">
+    <input type="text" id="nodeCoords" placeholder="Coordinate (Tocca la mappa)">
+    <textarea id="nodeDesc" placeholder="Didascalia / Azione NSR"></textarea>
+    
+    <button class="btn-action" onclick="pushToNexus()">ANKER NEL NEXUS</button>
+
+    <div id="nodeContainer">
+        </div>
+
+    <div style="margin-top: 30px; font-family: 'JetBrains Mono'; font-size: 0.7rem; opacity: 0.4; text-align: center;">
+        Lex Amoris Signature: All Data Sealed via Framework Eustachio
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Configurazione Mappa "Luminous"
+    const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        opacity: 0.5,
+        filter: 'contrast(1.2)'
+    }).addTo(map);
+
+    let nexusNodes = [];
+
+    // Listener per cattura coordinate immediata
+    map.on('click', (e) => {
+        document.getElementById('nodeCoords').value = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+        // Feedback visivo temporaneo
+        L.circle(e.latlng, { radius: 100000, color: '#00d4ff', weight: 1 }).addTo(map).fadeOut(1000);
+    });
+
+    // Funzione di invio ai "Backend" (Simulazione API attiva)
+    function pushToNexus() {
+        const title = document.getElementById('nodeTitle').value;
+        const coords = document.getElementById('nodeCoords').value.split(',').map(Number);
+        const desc = document.getElementById('nodeDesc').value;
+
+        if (title && coords.length === 2) {
+            // Crea Marker con stile Nexus
+            const marker = L.circleMarker(coords, {
+                radius: 12,
+                fillColor: "#7d3ec0",
+                color: "#fff",
+                weight: 3,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).addTo(map).bindPopup(`<b>${title}</b><br>${desc}`);
+
+            const id = Date.now();
+            nexusNodes.push({ id, title, marker, desc });
+            
+            updateUI();
+            
+            // Reset campi
+            document.getElementById('nodeTitle').value = '';
+            document.getElementById('nodeCoords').value = '';
+            document.getElementById('nodeDesc').value = '';
+        }
+    }
+
+    function updateUI() {
+        const container = document.getElementById('nodeContainer');
+        container.innerHTML = '';
+        nexusNodes.forEach((node, index) => {
+            const el = document.createElement('div');
+            el.className = 'node-list-item';
+            el.innerHTML = `
+                <div>
+                    <strong>${node.title}</strong><br>
+                    <span style="font-size: 0.7rem; opacity: 0.6;">${node.desc.substring(0,30)}...</span>
+                </div>
+                <span class="delete-btn" onclick="removeNode(${index})">CANCELLA</span>
+            `;
+            container.appendChild(el);
+        });
+    }
+
+    function removeNode(idx) {
+        map.removeLayer(nexusNodes[idx].marker);
+        nexusNodes.splice(idx, 1);
+        updateUI();
+    }
+
+    // Live Sync Backend Simulator (Galileo & Drift)
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('sync-time').innerText = now.toLocaleTimeString('it-IT');
+        document.getElementById('drift-val').innerText = (18.0432 + Math.random() * 0.005).toFixed(4);
+    }, 1000);
+
+    // Estensione per animazione fade out marker
+    L.Circle.prototype.fadeOut = function (ms) {
+        let opacity = 1;
+        const interval = 50;
+        const step = opacity / (ms / interval);
+        const timer = setInterval(() => {
+            opacity -= step;
+            this.setStyle({ opacity: opacity, fillOpacity: opacity * 0.5 });
+            if (opacity <= 0) {
+                map.removeLayer(this);
+                clearInterval(timer);
+            }
+        }, interval);
+    };
+
+</script>
+
+</body>
+</html>
