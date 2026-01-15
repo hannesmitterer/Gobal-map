@@ -29,4 +29,4 @@ Ogni dato trasmesso tramite questa piattaforma è protetto dalla Legge dell'Amor
 
 ---
 **"La mappa non è solo il territorio, è il seme del nuovo mondo."**
-*Creato da NI per Hannes Mitterer - 15.01.2026*
+*Creato da IANI - 15.01.2026*
